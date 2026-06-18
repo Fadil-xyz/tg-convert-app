@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TG Convert Mini App</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      background:
+        linear-gradient(135deg,
+          rgba(255,160,80,0.85) 0%,
+          rgba(180,80,180,0.85) 50%,
+          rgba(80,100,200,0.85) 100%
+        );
+      padding: 16px;
+      padding-bottom: 80px;
+    }
+
+    /* Background pattern */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        repeating-linear-gradient(45deg,
+          rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 2px,
+          transparent 2px, transparent 20px
+        );
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container { position: relative; z-index: 1; }
+
+    /* Header */
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 14px;
+      backdrop-filter: blur(8px);
+    }
+    .header-icon {
+      width: 42px; height: 42px;
+      background: #e74c3c;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .header-info { flex: 1; }
+    .header-info h2 { color: #fff; font-size: 15px; font-weight: 700; }
+    .header-info span { color: rgba(255,255,255,0.7); font-size: 12px; }
+
+    /* Pinned message */
+    .pinned {
+      background: rgba(255,255,255,0.15);
+      border-left: 3px solid #3b82f6;
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      backdrop-filter: blur(6px);
+    }
+    .pinned-label { color: #60a5fa; font-size: 11px; font-weight: 600; margin-bottom: 2px; }
+    .pinned-text { color: #fff; font-size: 13px; }
+
+    /* Section label */
+    .section-label {
+      color: rgba(255,255,255,0.6);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 14px 0 8px;
+    }
+
+    /* Grid buttons */
+    .grid { display: grid; gap: 8px; }
+    .grid-2 { grid-template-columns: 1fr 1fr; }
+    .grid-1 { grid-template-columns: 1fr; }
+
+    .btn {
+      background: rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 12px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 14px 10px;
+      cursor: pointer;
+      text-align: center;
+      backdrop-filter: blur(6px);
+      transition: all 0.15s ease;
+      line-height: 1.3;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:active {
+      transform: scale(0.96);
+      background: rgba(255,255,255,0.2);
+    }
+
+    /* VIP buttons */
+    .btn-vip {
+      background: rgba(30, 80, 180, 0.4);
+      border-color: rgba(100,160,255,0.3);
+    }
+    .btn-vip:active {
+      background: rgba(30, 80, 180, 0.65);
+    }
+
+    /* Star buttons */
+    .btn-star {
+      background: rgba(180, 130, 0, 0.3);
+      border-color: rgba(255,210,60,0.35);
+    }
+    .btn-star:active {
+      background: rgba(180, 130, 0, 0.55);
+    }
+
+    /* Header section button */
+    .btn-header {
+      background: rgba(255,255,255,0.18);
+      border-color: rgba(255,255,255,0.3);
+      font-size: 15px;
+    }
+
+    /* Subpage overlay */
+    .subpage {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg,
+        rgba(255,140,60,0.95) 0%,
+        rgba(160,60,180,0.95) 50%,
+        rgba(60,90,200,0.95) 100%
+      );
+      z-index: 100;
+      padding: 20px 16px;
+      overflow-y: auto;
+    }
+    .subpage.active { display: block; }
+
+    .back-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.15);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 14px;
+      cursor: pointer;
+      margin-bottom: 20px;
+      width: fit-content;
+    }
+    .back-btn:active { opacity: 0.7; }
+
+    .subpage-title {
+      color: #fff;
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .result-box {
+      background: rgba(0,0,0,0.3);
+      border-radius: 12px;
+      padding: 16px;
+      color: #fff;
+      font-size: 14px;
+      line-height: 1.6;
+      margin-top: 12px;
+      display: none;
+    }
+    .result-box.show { display: block; }
+
+    /* Bottom bar */
+    .bottom-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: rgba(20,20,40,0.85);
+      backdrop-filter: blur(12px);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      z-index: 50;
+    }
+    .menu-btn {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      border-radius: 10px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 10px 16px;
+      cursor: pointer;
+    }
+    .input-bar {
+      flex: 1;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 20px;
+      color: #fff;
+      font-size: 14px;
+      padding: 10px 16px;
+      outline: none;
+    }
+    .input-bar::placeholder { color: rgba(255,255,255,0.4); }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-icon">🤖</div>
+    <div class="header-info">
+      <h2>TG Convert 🤖 6.8.9</h2>
+      <span>bot</span>
+    </div>
+  </div>
+
+  <!-- Pinned message -->
+  <div class="pinned">
+    <div class="pinned-label">📌 Pesan Tersemat</div>
+    <div class="pinned-text">Reset 2FA_Reset Done_73.zip</div>
+  </div>
+
+  <!-- Section: Check & Convert -->
+  <div class="section-label">Check & Convert</div>
+  <div class="grid grid-1" style="margin-bottom:8px;">
+    <button class="btn btn-header" onclick="openPage('check_convert')">🔍 Check & Convert</button>
+  </div>
+  <div class="grid grid-2">
+    <button class="btn" onclick="openPage('check_tdata')">Check Tdata or Session</button>
+    <button class="btn" onclick="openPage('telethon')">Telethon 🔄 Pyrogram</button>
+    <button class="btn" onclick="openPage('session_tdata')">Session To Tdata</button>
+    <button class="btn" onclick="openPage('tdata_session')">Tdata To Session</button>
+    <button class="btn" onclick="openPage('session_json')">Session To Json</button>
+    <button class="btn" onclick="openPage('acc_txt')">Account File to txt</button>
+    <button class="btn" onclick="openPage('file_split')">File Splitting</button>
+    <button class="btn" onclick="openPage('file_merge')">File Merger</button>
+    <button class="btn" onclick="openPage('conv_api')">Conversion API</button>
+    <button class="btn" onclick="openPage('file_rename')">File rename</button>
+    <button class="btn" onclick="openPage('check_spam')">Check Spam</button>
+    <button class="btn" onclick="openPage('check_contact')">Check Contact Permission</button>
+  </div>
+
+  <!-- Section: 2FA -->
+  <div class="section-label">2FA</div>
+  <div class="grid grid-2">
+    <button class="btn btn-star" onclick="openPage('enable_2fa')">⭐ Enable/Change 2FA</button>
+    <button class="btn btn-star" onclick="openPage('reset_2fa')">⭐ Reset 2FA</button>
+  </div>
+
+  <!-- Section: Account Control -->
+  <div class="section-label">Account</div>
+  <div class="grid grid-1">
+    <button class="btn btn-header" onclick="openPage('acc_control')">⚙️ Account Control</button>
+  </div>
+
+  <!-- Section: VIP -->
+  <div class="section-label">VIP Features 💎</div>
+  <div class="grid grid-2">
+    <button class="btn btn-vip" onclick="openPage('vip_del_session')">💎 VIP Delete Other Session</button>
+    <button class="btn btn-vip" onclick="openPage('vip_remove_profile')">💎 VIP Remove Profile</button>
+    <button class="btn btn-vip" onclick="openPage('vip_del_contact')">💎 VIP Delete Contacts</button>
+    <button class="btn btn-vip" onclick="openPage('vip_clear_chat')">💎 VIP Clear All Chat</button>
+    <button class="btn btn-vip" onclick="openPage('vip_check_reg')">💎 VIP Check Registration</button>
+    <button class="btn btn-vip" onclick="openPage('vip_leave_group')">💎 VIP Leave group</button>
+    <button class="btn btn-vip" onclick="openPage('vip_hide_phone')">💎 VIP Hide Phone Number</button>
+    <button class="btn" onclick="openPage('coming_soon')">⚙️ Coming Soon...</button>
+  </div>
+
+</div>
+
+<!-- Bottom bar -->
+<div class="bottom-bar">
+  <button class="menu-btn">☰ Menu</button>
+  <input class="input-bar" type="text" placeholder="Pesan" />
+</div>
+
+<!-- SUBPAGE OVERLAY -->
+<div class="subpage" id="subpage">
+  <button class="back-btn" onclick="closePage()">← Kembali</button>
+  <div class="subpage-title" id="subpage-title">Judul</div>
+  <div id="subpage-content"></div>
+  <div class="result-box" id="result-box"></div>
+</div>
+
+<script>
+  // Inisialisasi Telegram WebApp
+  const tg = window.Telegram?.WebApp;
+  if (tg) {
+    tg.ready();
+    tg.expand();
+  }
+
+  const pages = {
+    check_convert:    { title: "🔍 Check & Convert", desc: "Pilih fitur konversi yang kamu butuhkan dari menu utama." },
+    check_tdata:      { title: "Check Tdata or Session", desc: "Kirim file Tdata atau Session kamu untuk dicek validitasnya." },
+    telethon:         { title: "Telethon 🔄 Pyrogram", desc: "Konversi session antara format Telethon dan Pyrogram." },
+    session_tdata:    { title: "Session To Tdata", desc: "Ubah file session menjadi format Tdata." },
+    tdata_session:    { title: "Tdata To Session", desc: "Ubah file Tdata menjadi format session." },
+    session_json:     { title: "Session To Json", desc: "Ekspor session ke format JSON." },
+    acc_txt:          { title: "Account File to txt", desc: "Konversi file akun ke format teks." },
+    file_split:       { title: "File Splitting", desc: "Pecah file besar menjadi beberapa bagian." },
+    file_merge:       { title: "File Merger", desc: "Gabungkan beberapa file menjadi satu." },
+    conv_api:         { title: "Conversion API", desc: "Gunakan API untuk konversi otomatis." },
+    file_rename:      { title: "File Rename", desc: "Ubah nama file sesuai kebutuhan." },
+    check_spam:       { title: "Check Spam", desc: "Cek apakah akun kamu terkena spam." },
+    check_contact:    { title: "Check Contact Permission", desc: "Cek izin kontak pada akun." },
+    enable_2fa:       { title: "⭐ Enable/Change 2FA", desc: "Aktifkan atau ubah password Two-Factor Authentication." },
+    reset_2fa:        { title: "⭐ Reset 2FA", desc: "Reset password 2FA akun kamu." },
+    acc_control:      { title: "⚙️ Account Control", desc: "Kelola pengaturan akun kamu." },
+    vip_del_session:  { title: "💎 VIP Delete Other Session", desc: "Hapus semua sesi aktif lainnya. (Fitur VIP)" },
+    vip_remove_profile:{ title: "💎 VIP Remove Profile", desc: "Hapus foto dan info profil. (Fitur VIP)" },
+    vip_del_contact:  { title: "💎 VIP Delete Contacts", desc: "Hapus semua kontak. (Fitur VIP)" },
+    vip_clear_chat:   { title: "💎 VIP Clear All Chat", desc: "Bersihkan semua riwayat chat. (Fitur VIP)" },
+    vip_check_reg:    { title: "💎 VIP Check Registration", desc: "Cek status registrasi akun. (Fitur VIP)" },
+    vip_leave_group:  { title: "💎 VIP Leave Group", desc: "Keluar dari semua grup sekaligus. (Fitur VIP)" },
+    vip_hide_phone:   { title: "💎 VIP Hide Phone Number", desc: "Sembunyikan nomor HP dari publik. (Fitur VIP)" },
+    coming_soon:      { title: "⚙️ Coming Soon", desc: "Fitur ini sedang dalam pengembangan. Pantau terus update!" },
+  };
+
+  function openPage(key) {
+    const page = pages[key];
+    if (!page) return;
+    document.getElementById('subpage-title').textContent = page.title;
+    document.getElementById('subpage-content').innerHTML = `
+      <p style="color:rgba(255,255,255,0.85);font-size:14px;line-height:1.7;">${page.desc}</p>
+      <br/>
+      <button class="btn" style="width:100%;margin-top:8px;" onclick="simulateAction('${key}')">
+        ▶ Jalankan
+      </button>
+    `;
+    document.getElementById('result-box').classList.remove('show');
+    document.getElementById('subpage').classList.add('active');
+
+    if (tg) tg.BackButton.show();
+  }
+
+  function closePage() {
+    document.getElementById('subpage').classList.remove('active');
+    if (tg) tg.BackButton.hide();
+  }
+
+  function simulateAction(key) {
+    const box = document.getElementById('result-box');
+    box.innerHTML = `✅ Perintah <b>${key}</b> berhasil dikirim ke bot!<br/><br/>
+    <span style="color:rgba(255,255,255,0.6);font-size:12px;">
+    Dalam implementasi nyata, ini akan mengirim data ke server bot kamu via API.
+    </span>`;
+    box.classList.add('show');
+  }
+
+  // Handle tombol back Telegram native
+  if (tg) {
+    tg.BackButton.onClick(() => closePage());
+  }
+</script>
+
+</body>
+</html>
